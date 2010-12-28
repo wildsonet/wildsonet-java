@@ -9,7 +9,7 @@ public class Main {
         if(args.length > 0) host = args[0];
         if(args.length > 1) port = Integer.decode(args[1]);
 
-        new Server(host, port);
+        new Server(host, port, null);
 
     }
 

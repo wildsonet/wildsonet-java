@@ -22,6 +22,12 @@ public class Handler extends SimpleChannelUpstreamHandler {
 
     private Map<String, Object> env;
 
+    private RackProxy rack;
+
+    public Handler(RackProxy rack) {
+        this.rack = rack;
+    }
+
     public void messageReceived(ChannelHandlerContext context, MessageEvent event) throws Exception {
 
         if (event.getMessage() instanceof HttpRequest) {
@@ -56,6 +62,16 @@ public class Handler extends SimpleChannelUpstreamHandler {
                 String[] temp = request.getUri().split("\\?", 2);
                 pathInfo = temp[0];
                 queryString = temp[1];
+            }else{
+                pathInfo = request.getUri();
+            }
+
+            File staticFile = new File("public" + pathInfo);
+            if(staticFile.exists() && staticFile.isFile()){
+                HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+                response.addHeader("X-Accel-Redirect", "/static" + pathInfo);
+                context.getChannel().write(response).addListener(ChannelFutureListener.CLOSE);
+                return;
             }
 
             request.removeHeader("Host");
@@ -96,12 +112,6 @@ public class Handler extends SimpleChannelUpstreamHandler {
                 env.put("HTTP_" + header.replaceAll("-", "_").toUpperCase(), request.getHeader(header));
             }
 
-            for (String en : env.keySet()) {
-                buf.append("ENV: ").append(en).append(": \t").append(env.get(en).toString()).append("\r\n");
-            }
-
-            buf.append("THREAD: ").append(Thread.currentThread().getName());
-
             if(!request.isChunked()){
                 handleResponse(event);
             }
@@ -121,17 +131,24 @@ public class Handler extends SimpleChannelUpstreamHandler {
         }
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+        e.getCause().printStackTrace();
+    }
+
     private void handleResponse(MessageEvent event) throws IOException {
 
-        HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-        response.setContent(ChannelBuffers.copiedBuffer(buf.toString(), CharsetUtil.UTF_8));
-        response.setHeader("CONTENT_TYPE", "text/plain; charset=UTF-8");
+        rack.call(env);
 
-        ChannelFuture future = event.getChannel().write(response);
-        future.addListener(ChannelFutureListener.CLOSE);
+        //HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        //response.setContent(ChannelBuffers.copiedBuffer(buf.toString(), CharsetUtil.UTF_8));
+        //response.setHeader("CONTENT_TYPE", "text/plain; charset=UTF-8");
 
-        rackInput.close();
-        boolean deleted = tempFile.delete();
+        //ChannelFuture future = event.getChannel().write(response);
+        //future.addListener(ChannelFutureListener.CLOSE);
+
+        //rackInput.close();
+        //boolean deleted = tempFile.delete();
 
     }
 

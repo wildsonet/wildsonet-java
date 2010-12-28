@@ -12,6 +12,12 @@ public class PipelineFactory implements ChannelPipelineFactory {
 
     private static ExecutionHandler executionHandler = new ExecutionHandler(new OrderedMemoryAwareThreadPoolExecutor(16, 0, 0));
 
+    private RackProxy rack;
+
+    public PipelineFactory(RackProxy rack) {
+        this.rack = rack;
+    }
+
     public ChannelPipeline getPipeline() throws Exception {
 
         ChannelPipeline pipeline = Channels.pipeline();
@@ -21,7 +27,7 @@ public class PipelineFactory implements ChannelPipelineFactory {
 
         pipeline.addLast("executor", executionHandler);
 
-        pipeline.addLast("handler", new Handler());
+        pipeline.addLast("handler", new Handler(this.rack));
 
         return pipeline;
 
