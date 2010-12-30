@@ -36,8 +36,6 @@ public class Handler extends SimpleChannelUpstreamHandler {
 
             env = new HashMap<String, Object>();
 
-            int[] rack_version = {1, 1};
-
             String scheme = "http";
             String hostname = HttpHeaders.getHost(request, "localhost");
             String port = "80";
@@ -98,7 +96,6 @@ public class Handler extends SimpleChannelUpstreamHandler {
             env.put("SERVER_NAME", hostname);
             env.put("SERVER_PORT", port);
 
-            env.put("rack.version", rack_version);
             env.put("rack.url_scheme", scheme);
             env.put("rack.input", rackInput);
             env.put("rack.errors", System.err);
@@ -109,7 +106,11 @@ public class Handler extends SimpleChannelUpstreamHandler {
             env.put("wsn.context", context);
 
             for (String header : request.getHeaderNames()) {
-                env.put("HTTP_" + header.replaceAll("-", "_").toUpperCase(), request.getHeader(header));
+                String name = header.replaceAll("-", "_").toUpperCase();
+                if(!name.equals("CONTENT_TYPE") && !name.equals("CONTENT_LENGTH")){
+                    name = "HTTP_".concat(name);
+                }
+                env.put(name, request.getHeader(header));
             }
 
             if(!request.isChunked()){
